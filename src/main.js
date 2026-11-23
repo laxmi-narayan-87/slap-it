@@ -39,7 +39,11 @@ class SlapApp {
 
   _initThree() {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0f172a); // Slate-900 arcade backdrop
+    
+    // Exact dark muted studio backdrop matching the reference photography
+    const studioColor = new THREE.Color(0x1a211c);
+    this.scene.background = studioColor;
+    this.scene.fog = new THREE.FogExp2(0x1a211c, 0.075);
 
     const width = window.innerWidth;
     const height = window.innerHeight;
@@ -57,29 +61,37 @@ class SlapApp {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.1;
+    this.renderer.toneMappingExposure = 1.05;
 
-    // Lighting setup for vibrant 3D character readability
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    // Atmospheric Studio Lighting
+    const ambientLight = new THREE.AmbientLight(0xfff7ee, 0.65);
     this.scene.add(ambientLight);
 
-    // Key Light
-    const keyLight = new THREE.DirectionalLight(0xfff5ea, 1.4);
-    keyLight.position.set(3, 4, 4);
+    // Key Studio Light (Positioned to cast soft hand shadows onto the face)
+    const keyLight = new THREE.DirectionalLight(0xfffaec, 1.35);
+    keyLight.position.set(-2.8, 3.6, 3.8);
     keyLight.castShadow = true;
-    keyLight.shadow.mapSize.width = 1024;
-    keyLight.shadow.mapSize.height = 1024;
+    keyLight.shadow.mapSize.width = 2048;
+    keyLight.shadow.mapSize.height = 2048;
+    keyLight.shadow.camera.near = 0.5;
+    keyLight.shadow.camera.far = 15;
+    keyLight.shadow.camera.left = -4;
+    keyLight.shadow.camera.right = 4;
+    keyLight.shadow.camera.top = 4;
+    keyLight.shadow.camera.bottom = -4;
+    keyLight.shadow.bias = -0.0004;
+    keyLight.shadow.radius = 2.5;
     this.scene.add(keyLight);
 
-    // Cool Rim / Fill Light
-    const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.9);
-    rimLight.position.set(-3, 2, -2);
-    this.scene.add(rimLight);
+    // Warm Fill Light
+    const fillLight = new THREE.DirectionalLight(0xbad7c9, 0.5);
+    fillLight.position.set(3.2, 1.8, 2.5);
+    this.scene.add(fillLight);
 
-    // Warm bounce light from below
-    const bounceLight = new THREE.DirectionalLight(0xf43f5e, 0.4);
-    bounceLight.position.set(0, -3, 2);
-    this.scene.add(bounceLight);
+    // Subtle Rim Light on Beanie & Shoulders
+    const rimLight = new THREE.DirectionalLight(0xffffff, 0.7);
+    rimLight.position.set(0, 2.8, -2.8);
+    this.scene.add(rimLight);
   }
 
   /**
