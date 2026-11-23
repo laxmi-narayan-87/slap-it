@@ -150,6 +150,11 @@ export class HandController {
 
     this.prevSpeed = this.speed;
 
+    // Check Anticipation / Flinching as hand approaches
+    if (character.checkAnticipation) {
+      character.checkAnticipation(this.group.position, this.speed);
+    }
+
     // Check Collision with Character Head
     this._checkCollision(character, soundEngine, onSlapCallback, now);
   }
