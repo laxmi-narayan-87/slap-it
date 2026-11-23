@@ -19,14 +19,15 @@ export class HandController {
     this.speed = 0;                                  // Scalar speed
     this.swipeDirection = new THREE.Vector3(1, 0, 0);
 
-    // Interaction gating & latency tuning
+    // Interaction gating & rhythmic gesture cadence
     this.lastSlapTime = 0;
     this.slapCooldown = 130;                         // ms minimum between distinct slaps
-    this.strokeCooldown = 200;                       // ms minimum between aerodynamic swing strokes
+    this.strokeCooldown = 140;                       // ms minimum between rhythmic aerodynamic whooshes
     this.lastWhooshTime = 0;
     this.strokeDistance = 0;                         // cumulative swing distance
-    this.strokeCount = 0;                            // stroke counter for rhythmic alternation
-    this.prevSpeed = 0;                              // previous frame speed for peak detection
+    this.strokeCount = 0;                            // stroke counter for rhythmic variation cycling
+    this.lastDirectionX = 0;                         // sign of dx for direction reversal rhythm
+    this.prevSpeed = 0;
     this.wasInsideHitbox = false;
 
     // Hand plane depth in 3D scene
@@ -38,7 +39,7 @@ export class HandController {
 
   _buildHandMesh() {
     const skinMat = new THREE.MeshStandardMaterial({
-      color: 0xe2ab88,
+      color: 0xdfa888,
       roughness: 0.52,
       metalness: 0.02
     });
@@ -73,22 +74,16 @@ export class HandController {
     this.thumb.castShadow = true;
     this.group.add(this.thumb);
 
-    // Default rest angle (facing towards screen center)
     this.group.scale.set(0.9, 0.9, 0.9);
-    this.group.position.set(0, -5, 0); // start off-screen
+    this.group.position.set(0, -5, 0);
   }
 
   /**
    * Updates pointer tracking, calculates velocity, and tests collision.
-   * @param {number} clientX
-   * @param {number} clientY
-   * @param {SlapCharacter} character
-   * @param {SoundEngine} soundEngine
-   * @param {Function} onSlapCallback
    */
   handlePointerMove(clientX, clientY, character, soundEngine, onSlapCallback) {
     const now = performance.now();
-    const dt = Math.max(1, now - this.lastTime); // avoid divide by zero
+    const dt = Math.max(1, now - this.lastTime);
 
     // Compute pixel delta & velocity (pixels per millisecond)
     const dx = clientX - this.lastScreenPos.x;
@@ -112,7 +107,6 @@ export class HandController {
     const distance = (this.depth - this.camera.position.z) / vec.z;
     const target3D = this.camera.position.clone().add(vec.multiplyScalar(distance));
 
-    // Smooth hand position to prevent visual jitter
     this.group.position.lerp(target3D, 0.45);
 
     // Determine swipe vector in 3D
@@ -131,14 +125,26 @@ export class HandController {
     const moveDist = Math.hypot(dx, dy);
     this.strokeDistance += moveDist;
 
+    // Detect stroke direction change (reversal indicates a rhythmic sweep)
+    const currentDirectionX = Math.sign(dx);
+    const hasReversed = this.lastDirectionX !== 0 && currentDirectionX !== 0 && currentDirectionX !== this.lastDirectionX;
+    if (currentDirectionX !== 0) {
+      this.lastDirectionX = currentDirectionX;
+    }
+
     // Rhythmic Aerodynamic Windup Trigger:
-    // Only fires at the apex of a deliberate swing stroke (acceleration peak with significant travel),
-    // eliminating continuous dragging friction and creating a satisfying rhythmic swish cadence.
-    const isSwingApex = this.speed > 1.35 && this.speed <= this.prevSpeed && this.strokeDistance > 65;
-    if (isSwingApex && (now - this.lastWhooshTime > this.strokeCooldown)) {
+    // Fires on:
+    // 1. Natural swing stroke apex (speed > 0.65 px/ms with substantial travel > 50px), OR
+    // 2. Stroke reversal during rapid waving (reversing direction with accumulated travel > 35px at speed > 0.45 px/ms).
+    // This allows fluid rhythmic waving/slashing sounds that sync with hand cadence without continuous friction.
+    const hasSufficientSpeed = this.speed > 0.65;
+    const isStrokeApex = hasSufficientSpeed && this.strokeDistance > 50 && (this.speed <= this.prevSpeed || this.strokeDistance > 110);
+    const isRhythmicReversal = hasReversed && this.strokeDistance > 35 && this.speed > 0.45;
+
+    if ((isStrokeApex || isRhythmicReversal) && (now - this.lastWhooshTime > this.strokeCooldown)) {
       this.lastWhooshTime = now;
       this.strokeDistance = 0;
-      const intensity = Math.min(1.0, Math.max(0.3, this.speed / 3.2));
+      const intensity = Math.min(1.0, Math.max(0.35, this.speed / 2.2));
       soundEngine.playWhoosh(intensity, this.strokeCount++);
     }
 
@@ -155,27 +161,18 @@ export class HandController {
     const handWorldPos = this.group.position;
     const distToHead = handWorldPos.distanceTo(hitSphere.center);
 
-    const isInside = distToHead < (hitSphere.radius + 0.3);
-
-    // Slap registers when hand crosses into hitbox WITH sufficient swing speed
-    // OR when the user taps/clicks directly onto the face
-    const hasSlapSpeed = this.speed > 0.45;
+    const isInside = distToHead < (hitSphere.radius + 0.35);
+    const hasSlapSpeed = this.speed > 0.42;
 
     if (isInside && !this.wasInsideHitbox && hasSlapSpeed) {
       this.lastSlapTime = now;
 
-      // Calculate slap force from velocity
-      // speed ~ 0.5 (gentle) to 4.0+ (massive supersonic slap)
       const force = THREE.MathUtils.clamp(this.speed * 0.75, 0.6, 2.8);
       const hitSide = this.swipeDirection.x > 0 ? 'left' : 'right';
 
-      // 1. Instantaneous Sound Trigger (< 15ms)
       soundEngine.playSlap(force / 2.0);
-
-      // 2. Physical Character Impulse
       character.applySlapImpulse(this.swipeDirection, force, hitSide);
 
-      // 3. Callback for Game HUD & FX
       if (onSlapCallback) {
         onSlapCallback({
           force,
@@ -189,9 +186,6 @@ export class HandController {
     this.wasInsideHitbox = isInside;
   }
 
-  /**
-   * Direct click/tap support (in case user clicks without high drag velocity).
-   */
   handleDirectTap(clientX, clientY, character, soundEngine, onSlapCallback) {
     const now = performance.now();
     if (now - this.lastSlapTime < this.slapCooldown) return;
