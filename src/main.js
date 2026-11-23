@@ -131,19 +131,6 @@ class SlapApp {
       }
     });
 
-    // Transition State Preview Buttons
-    document.querySelectorAll('.transition-pills .pill-btn').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        const state = e.currentTarget.getAttribute('data-state');
-        document.querySelectorAll('.transition-pills .pill-btn').forEach(b => b.classList.remove('active'));
-        e.currentTarget.classList.add('active');
-
-        if (this.character) {
-          this.character.setExpressionState(state, 2.5); // hold state preview for 2.5 seconds
-        }
-      });
-    });
-
     // High-frequency Pointer Tracking (Mouse and Touch)
     const onPointerMove = (e) => {
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
