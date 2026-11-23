@@ -9,6 +9,8 @@ export class SoundEngine {
     this.isMuted = false;
     this.isInitialized = false;
     this.slapBuffers = [];
+    this.whooshBuffers = [];
+    this.whooshIndex = 0;
     this.whooshBuffer = null;
     this.boingBuffer = null;
     this.gruntBuffers = [];
@@ -47,7 +49,14 @@ export class SoundEngine {
       this._createSlapBuffer(1.8, 600, 55)      // Critical WHAM slap
     ];
 
-    this.whooshBuffer = this._createWhooshBuffer();
+    // Multi-variation aerodynamic resonant windup whooshes (rhythmic, clean air slicing, zero friction hiss)
+    this.whooshBuffers = [
+      this._createWhooshBuffer(0.18, 380, 1100, 3.2, 30, 120),  // Swift light swish
+      this._createWhooshBuffer(0.22, 280, 850, 2.8, 25, 100),   // Medium whip whoosh
+      this._createWhooshBuffer(0.26, 200, 620, 2.4, 20, 80)     // Heavy deep aerodynamic swing
+    ];
+    this.whooshBuffer = this.whooshBuffers[0]; // fallback compatibility
+
     this.boingBuffer = this._createBoingBuffer();
     this.gruntBuffers = [
       this._createGruntBuffer(180, 0.22),
@@ -98,25 +107,47 @@ export class SoundEngine {
   }
 
   /**
-   * Synthesizes an aerodynamic air whoosh when the hand is swung rapidly.
+   * Synthesizes an aerodynamic air whoosh using 2-pole state variable bandpass filtering
+   * and vortex shedding flutter to produce a smooth, rhythmic air slicing sound with zero friction hiss.
    */
-  _createWhooshBuffer() {
+  _createWhooshBuffer(duration = 0.22, fStart = 280, fPeak = 850, Q = 2.8, flutterFreq = 26, subPitch = 100) {
     if (!this.ctx) return null;
     const sampleRate = this.ctx.sampleRate;
-    const duration = 0.24;
     const length = Math.floor(sampleRate * duration);
     const buffer = this.ctx.createBuffer(1, length, sampleRate);
     const data = buffer.getChannelData(0);
 
+    let low = 0;
+    let band = 0;
+
     for (let i = 0; i < length; i++) {
       const t = i / sampleRate;
-      // Parabolic amplitude envelope: swell in, swell out
-      const envelope = Math.sin((t / duration) * Math.PI);
-      // Pink-ish noise
-      const noise = (Math.random() * 2 - 1) * 0.5;
-      // Modulated tonal breeze
-      const tone = Math.sin(2 * Math.PI * (180 + 260 * envelope) * t) * 0.4;
-      data[i] = (noise + tone) * envelope * 0.7;
+      const progress = t / duration;
+
+      // Smooth aerodynamic bell envelope (no clicking, no raw sandpaper scraping)
+      const envelope = Math.pow(Math.sin(progress * Math.PI), 2.2);
+
+      // Center frequency swept along aerodynamic acceleration trajectory
+      const fc = fStart + (fPeak - fStart) * Math.sin(progress * Math.PI);
+      const f = 2 * Math.sin((Math.PI * fc) / sampleRate);
+      const qInv = 1.0 / Q;
+
+      // White noise generator
+      const white = (Math.random() * 2 - 1) * 0.7;
+
+      // State Variable Filter step (2-pole resonant bandpass)
+      low += f * band;
+      const high = white - low - qInv * band;
+      band += f * high;
+
+      // Aerodynamic vortex shedding flutter (rhythmic pressure oscillation around fingers)
+      const flutter = 0.78 + 0.22 * Math.sin(2 * Math.PI * flutterFreq * t);
+
+      // Low-end sub air displacement body (~90-130Hz)
+      const subTone = Math.sin(2 * Math.PI * (subPitch * (1 - 0.2 * progress)) * t) * 0.35;
+
+      const sample = (band * 2.2 + subTone) * flutter * envelope;
+      data[i] = Math.tanh(sample * 1.5) * 0.75;
     }
     return buffer;
   }
@@ -208,17 +239,30 @@ export class SoundEngine {
   }
 
   /**
-   * Plays a whoosh sound when the hand is moving fast through the air.
+   * Plays a rhythmic aerodynamic whoosh sound when the hand swings through the air.
+   * @param {number} velocityNormalized - Normalized swipe intensity
+   * @param {number} strokeIndex - Gesture cadence counter to alternate variations
    */
-  playWhoosh(velocityNormalized = 0.5) {
-    if (this.isMuted || !this.ctx || !this.whooshBuffer) return;
+  playWhoosh(velocityNormalized = 0.5, strokeIndex = -1) {
+    if (this.isMuted || !this.ctx || !this.whooshBuffers.length) return;
+
+    // Pick rhythmic variation based on stroke index or cycle
+    const idx = strokeIndex >= 0
+      ? (strokeIndex % this.whooshBuffers.length)
+      : (this.whooshIndex++ % this.whooshBuffers.length);
+    const buffer = this.whooshBuffers[idx] || this.whooshBuffers[0];
+    if (!buffer) return;
 
     const source = this.ctx.createBufferSource();
-    source.buffer = this.whooshBuffer;
-    source.playbackRate.setValueAtTime(0.85 + velocityNormalized * 0.4, this.ctx.currentTime);
+    source.buffer = buffer;
+
+    // Natural human variation in pitch
+    const pitchJitter = 0.94 + Math.random() * 0.12;
+    source.playbackRate.setValueAtTime((0.92 + velocityNormalized * 0.35) * pitchJitter, this.ctx.currentTime);
 
     const gainNode = this.ctx.createGain();
-    gainNode.gain.setValueAtTime(Math.min(0.6, velocityNormalized * 0.7), this.ctx.currentTime);
+    const targetGain = Math.min(0.75, Math.max(0.2, 0.25 + velocityNormalized * 0.6));
+    gainNode.gain.setValueAtTime(targetGain, this.ctx.currentTime);
 
     source.connect(gainNode);
     gainNode.connect(this.masterGain);

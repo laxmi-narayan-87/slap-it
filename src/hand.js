@@ -22,8 +22,11 @@ export class HandController {
     // Interaction gating & latency tuning
     this.lastSlapTime = 0;
     this.slapCooldown = 130;                         // ms minimum between distinct slaps
-    this.whooshCooldown = 320;                       // ms
+    this.strokeCooldown = 200;                       // ms minimum between aerodynamic swing strokes
     this.lastWhooshTime = 0;
+    this.strokeDistance = 0;                         // cumulative swing distance
+    this.strokeCount = 0;                            // stroke counter for rhythmic alternation
+    this.prevSpeed = 0;                              // previous frame speed for peak detection
     this.wasInsideHitbox = false;
 
     // Hand plane depth in 3D scene
@@ -35,9 +38,9 @@ export class HandController {
 
   _buildHandMesh() {
     const skinMat = new THREE.MeshStandardMaterial({
-      color: 0xffccaa,
-      roughness: 0.5,
-      metalness: 0.05
+      color: 0xe2ab88,
+      roughness: 0.52,
+      metalness: 0.02
     });
 
     // 1. Palm
@@ -124,11 +127,22 @@ export class HandController {
     this.group.rotation.z = THREE.MathUtils.lerp(this.group.rotation.z, targetRotZ, 0.3);
     this.group.rotation.y = THREE.MathUtils.lerp(this.group.rotation.y, targetRotY, 0.3);
 
-    // Check whoosh sound for high velocity swings
-    if (this.speed > 1.8 && now - this.lastWhooshTime > this.whooshCooldown) {
+    // Track gesture stroke distance
+    const moveDist = Math.hypot(dx, dy);
+    this.strokeDistance += moveDist;
+
+    // Rhythmic Aerodynamic Windup Trigger:
+    // Only fires at the apex of a deliberate swing stroke (acceleration peak with significant travel),
+    // eliminating continuous dragging friction and creating a satisfying rhythmic swish cadence.
+    const isSwingApex = this.speed > 1.35 && this.speed <= this.prevSpeed && this.strokeDistance > 65;
+    if (isSwingApex && (now - this.lastWhooshTime > this.strokeCooldown)) {
       this.lastWhooshTime = now;
-      soundEngine.playWhoosh(Math.min(1.0, this.speed / 4.0));
+      this.strokeDistance = 0;
+      const intensity = Math.min(1.0, Math.max(0.3, this.speed / 3.2));
+      soundEngine.playWhoosh(intensity, this.strokeCount++);
     }
+
+    this.prevSpeed = this.speed;
 
     // Check Collision with Character Head
     this._checkCollision(character, soundEngine, onSlapCallback, now);
