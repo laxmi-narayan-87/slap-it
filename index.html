@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Slap-a-Face | Stress Relief & Anti-Anxiety</title>
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- Modern Import Map for Zero-Build Three.js execution -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <!-- 3D Canvas Layer -->
+  <canvas id="webgl-canvas"></canvas>
+
+  <!-- 2D Comic Impact Text Container -->
+  <div id="popup-container"></div>
+
+  <!-- HUD Overlay -->
+  <div id="hud-overlay">
+    <!-- Top Bar: Title & Latency SLA Badge -->
+    <header class="hud-header">
+      <div class="brand">
+        <span class="brand-icon">👋</span>
+        <span class="brand-title">SLAP RELIEF</span>
+      </div>
+      <div id="latency-badge" class="badge">⚡ Sub-15ms Real-Time Audio</div>
+    </header>
+
+    <!-- Center-Top: Slap Counter -->
+    <div class="counter-card">
+      <div class="counter-label">TOTAL SLAPS</div>
+      <div id="slap-count" class="counter-number">0</div>
+      
+      <!-- Stress Relief Meter -->
+      <div class="stress-meter-container">
+        <div class="stress-bar">
+          <div id="stress-fill" class="stress-fill"></div>
+        </div>
+        <div id="stress-text" class="stress-text">Stress Level: High 😫</div>
+      </div>
+    </div>
+
+    <!-- Bottom Controls & Hints -->
+    <footer class="hud-footer">
+      <div class="instruction-pill">
+        <span>💨 Swipe fast or tap to slap • Sound reactive</span>
+      </div>
+      <div class="hud-actions">
+        <button id="mute-btn" class="hud-btn" title="Toggle Sound">🔊 Mute</button>
+        <button id="reset-btn" class="hud-btn hud-btn-subtle" title="Reset Counter">↺ Reset</button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Splash / Pre-warming Overlay (Unlocks Browser AudioContext) -->
+  <div id="splash-overlay" class="splash-screen">
+    <div class="splash-card">
+      <div class="splash-icon">👋💥</div>
+      <h1 class="splash-title">Slap-a-Face Stress Relief</h1>
+      <p class="splash-desc">
+        Take a moment to de-stress. Swing your cursor or finger to deliver a satisfying, responsive slap.
+      </p>
+
+      <div class="tech-specs">
+        <div class="spec-item">
+          <span class="spec-dot"></span>
+          <span>Zero-Latency Audio Engine (&lt; 15ms)</span>
+        </div>
+        <div class="spec-item">
+          <span class="spec-dot"></span>
+          <span>Procedural 3D Spring Recoil (60+ FPS)</span>
+        </div>
+        <div class="spec-item">
+          <span class="spec-dot"></span>
+          <span>100% Client-Side • No Database • No Logins</span>
+        </div>
+      </div>
+
+      <button id="start-btn" class="start-button">
+        <span>START SLAPPING</span>
+        <span class="arrow-icon">→</span>
+      </button>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

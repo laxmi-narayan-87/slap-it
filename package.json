@@ -1,0 +1,16 @@
+{
+  "name": "slap-stress-relief",
+  "version": "1.0.0",
+  "description": "Zero-latency 3D interactive stress relief web application",
+  "scripts": {
+    "start": "npx serve -l 3000 ."
+  },
+  "keywords": [
+    "threejs",
+    "web-audio",
+    "stress-relief",
+    "game"
+  ],
+  "author": "",
+  "license": "MIT"
+}
