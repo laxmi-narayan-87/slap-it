@@ -14,7 +14,6 @@ class SlapApp {
     this.splashOverlay = document.getElementById('splash-overlay');
     this.startBtn = document.getElementById('start-btn');
     this.muteBtn = document.getElementById('mute-btn');
-    this.resetBtn = document.getElementById('reset-btn');
     this.latencyBadge = document.getElementById('latency-badge');
 
     // State
@@ -120,15 +119,6 @@ class SlapApp {
       const isMuted = this.sound.toggleMute();
       this.muteBtn.innerHTML = isMuted ? '🔇 Unmute' : '🔊 Mute';
       this.muteBtn.classList.toggle('active', isMuted);
-    });
-
-    // Reset Slap Counter
-    this.resetBtn.addEventListener('click', () => {
-      if (confirm('Reset your stress slap counter to 0?')) {
-        this.slapCount = 0;
-        localStorage.setItem('slap_relief_count', '0');
-        this._updateHUD();
-      }
     });
 
     // High-frequency Pointer Tracking (Mouse and Touch)
